@@ -29,16 +29,24 @@ Console: Atmosphère + hbmenu (tested: Atmosphère 1.11.2, firmware 21.1).
 **Expected:** keyboard renders, typing works.
 
 **Actual (bug):** the log shows `show #1 rect h=400`, `geometry h=400` and
-`change` events — but **no keyboard is rendered and touch is ignored**. A
-USB keyboard still delivers text into the invisible session. Every later
-nx.js app in this hbloader process gets the same zombie.
+two `change len=0` handshake events — but **no keyboard is rendered and
+touch is ignored**. A USB keyboard still delivers text into the invisible
+session. Every later nx.js app in this hbloader process gets the same
+zombie, and — device-verified — exiting one of those later apps cleanly
+(**Minus**, which calls `hide()` and settles before `Switch.exit()`) does
+NOT heal the process: the leaked session was never `swkbdInlineClose`d and
+nothing in a later app can close it. Recovery requires relaunching hbmenu
+(fresh process).
 
-Control: exit with **Minus** (the app calls `hide()` and settles before
-`Switch.exit()`) — the next launch's keyboard works.
+Control (run from a FRESH hbmenu process, before any leak): X → type →
+close the keyboard (Send) → exit with **Minus** → relaunch → X. Whether
+this stays healthy tells whether the leak needs a session alive at exit or
+merely one ever created; the close-only-in-finalizer root cause predicts
+even this control may eventually zombie. Record the result.
 
-Recovery: relaunch hbmenu (fresh process). A harsher variant — killing the
-app from HOME with the keyboard attached — has left the system `swkbd`
-applet itself crashed (`2001-0132`) until reboot.
+A harsher variant — killing the app from HOME with the keyboard attached —
+has left the system `swkbd` applet itself crashed (`2001-0132`) until
+reboot.
 
 Log: `sdmc:/switch/swkbd-leak-repro.log` (every keyboard event, plus
 `keyboard open at exit (LEAK)` when an exit leaks the session).
