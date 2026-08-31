@@ -49,9 +49,25 @@ never `swkbdInlineClose`d, and `hide()` cannot reach it.
 
 **The leak is unconditional** (device-verified control, fresh boot): open
 the keyboard, type, close it normally with **Send**, exit cleanly with
-**Minus** — the next launch is still a zombie. A session does not need to
-be alive at exit; merely having created one poisons the process, because
-`swkbdInlineClose` only ever runs in the GC finalizer.
+**Minus** — the next launch is still a zombie. The source explains why no
+exit discipline can help:
+
+- the `navigator.virtualKeyboard` getter creates the native keyboard on
+  **first property access**;
+- `nx_swkbd_create` immediately calls `swkbdInlineCreate` **and
+  `swkbdInlineLaunchForLibraryApplet`** — the applet session is live from
+  that moment, shown or not, for the whole app lifetime;
+- `swkbdInlineClose` only ever runs in the V8 wrapper's GC finalizer,
+  which the exit path never reaches.
+
+So any app that merely *reads* `navigator.virtualKeyboard` (this repro
+does, at boot) carries a live applet session to its death, and the next
+NRO in the reused hbloader process inherits the corpse.
+
+**A/B proof**: `swkbd-leak-repro-fixed.nro` is the identical app packed
+against a runtime whose `main()` teardown runs `swkbdInlineDisappear` +
+`swkbdInlineUpdate` + `swkbdInlineClose` (`nx_swkbd_teardown()`). Same
+protocol — the keyboard must survive every relaunch.
 
 (Aside on `+`: while the keyboard is open, one `+` press is consumed by
 the applet as OK/Send AND dispatches the runtime's `beforeunload` — whose
