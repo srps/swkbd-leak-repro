@@ -47,10 +47,17 @@ Console: Atmosphère + hbmenu (tested: Atmosphère 1.11.2, firmware 21.1).
 Nothing a later app does can heal either state: the leaked session was
 never `swkbdInlineClose`d, and `hide()` cannot reach it.
 
-Control (requires a REBOOT first, then a fresh hbmenu process): X → type →
-close the keyboard (Send) → exit with **Minus** → relaunch → X. Whether
-this stays healthy tells whether the leak needs a session alive at exit or
-merely one ever created. Record the result.
+**The leak is unconditional** (device-verified control, fresh boot): open
+the keyboard, type, close it normally with **Send**, exit cleanly with
+**Minus** — the next launch is still a zombie. A session does not need to
+be alive at exit; merely having created one poisons the process, because
+`swkbdInlineClose` only ever runs in the GC finalizer.
+
+(Aside on `+`: while the keyboard is open, one `+` press is consumed by
+the applet as OK/Send AND dispatches the runtime's `beforeunload` — whose
+default exit the runtime's own keyboard guard then prevents. No teardown
+runs on that press; it is not the cause. It does mean the exit combo needs
+two presses while the keyboard is up.)
 
 Log: `sdmc:/switch/swkbd-leak-repro.log` (every keyboard event, plus
 `keyboard open at exit (LEAK)` when an exit leaks the session).

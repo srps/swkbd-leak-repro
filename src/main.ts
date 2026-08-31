@@ -69,7 +69,11 @@ let moved = 0, startY = -1, touchWithKb = false;
 (screen as any).addEventListener("touchstart", (e: any) => { touchWithKb = vkUp; moved = 0; startY = e.touches?.[0]?.screenY ?? -1; });
 (screen as any).addEventListener("touchmove", (e: any) => { const y = e.touches?.[0]?.screenY; if (typeof y === "number" && startY >= 0) moved = Math.max(moved, Math.abs(y - startY)); });
 (screen as any).addEventListener("touchend", () => { if (!touchWithKb && moved < 40) open(); });
-addEventListener("beforeunload", () => { log(`exit frames=${frames} vkUp=${vkUp}${vkUp ? " — keyboard open at exit (LEAK)" : ""}`); });
+// NOTE: "+" fires beforeunload even when the exit is then PREVENTED by the
+// runtime's own keyboard guard (VirtualKeyboard.show installs a preventExit
+// beforeunload listener; the applet consumes the same press as OK/Send). So
+// this line alone does not mean the app exited — the run's last line does.
+addEventListener("beforeunload", () => { log(`beforeunload (plus) frames=${frames} vkUp=${vkUp}${vkUp ? " — exit prevented by keyboard guard" : " — exiting"}`); });
 
 let last = new Set<number>();
 function frame() {
