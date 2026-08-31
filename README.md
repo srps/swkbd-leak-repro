@@ -28,25 +28,29 @@ Console: Atmosphère + hbmenu (tested: Atmosphère 1.11.2, firmware 21.1).
 
 **Expected:** keyboard renders, typing works.
 
-**Actual (bug):** the log shows `show #1 rect h=400`, `geometry h=400` and
-two `change len=0` handshake events — but **no keyboard is rendered and
-touch is ignored**. A USB keyboard still delivers text into the invisible
-session. Every later nx.js app in this hbloader process gets the same
-zombie, and — device-verified — exiting one of those later apps cleanly
-(**Minus**, which calls `hide()` and settles before `Switch.exit()`) does
-NOT heal the process: the leaked session was never `swkbdInlineClose`d and
-nothing in a later app can close it. Recovery requires relaunching hbmenu
-(fresh process).
+**Actual (bug), two escalation levels — both device-verified:**
 
-Control (run from a FRESH hbmenu process, before any leak): X → type →
+1. *Process-local zombie:* the log shows `show #1 rect h=400`,
+   `geometry h=400` and `change len=0` handshake events, but no keyboard is
+   rendered and touch is ignored; a USB keyboard still delivers text into
+   the invisible session. Every later nx.js app in the same hbloader
+   process inherits it.
+2. *System applet crash:* a `show()` on the leaked session can crash the
+   **system `swkbd` LibraryApplet itself** — Atmosphère crash report per
+   attempt: `2001-0132`, `User Break` in process `swkbd`, always at the
+   same module offset (`+0x196c2c`); the log then shows `geometry h=400`
+   with **zero** `change` events. From that point every keyboard on the
+   console is dead — hbmenu relaunch does NOT recover it; only a reboot
+   does. (Killing the app from HOME with the keyboard attached triggers the
+   same state.)
+
+Nothing a later app does can heal either state: the leaked session was
+never `swkbdInlineClose`d, and `hide()` cannot reach it.
+
+Control (requires a REBOOT first, then a fresh hbmenu process): X → type →
 close the keyboard (Send) → exit with **Minus** → relaunch → X. Whether
 this stays healthy tells whether the leak needs a session alive at exit or
-merely one ever created; the close-only-in-finalizer root cause predicts
-even this control may eventually zombie. Record the result.
-
-A harsher variant — killing the app from HOME with the keyboard attached —
-has left the system `swkbd` applet itself crashed (`2001-0132`) until
-reboot.
+merely one ever created. Record the result.
 
 Log: `sdmc:/switch/swkbd-leak-repro.log` (every keyboard event, plus
 `keyboard open at exit (LEAK)` when an exit leaks the session).
