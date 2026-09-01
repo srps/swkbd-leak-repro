@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Minimal stock-runtime repro: nx.js inline swkbd applet session leaks across app exit (zombie keyboard via hbloader process reuse)",
+  "author": "Sérgio P. da Silva",
   "scripts": {
     "build": "esbuild src/main.ts --bundle --format=esm --outfile=romfs/main.js"
   }
