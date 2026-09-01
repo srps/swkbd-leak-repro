@@ -64,10 +64,13 @@ So any app that merely *reads* `navigator.virtualKeyboard` (this repro
 does, at boot) carries a live applet session to its death, and the next
 NRO in the reused hbloader process inherits the corpse.
 
-**A/B proof**: `swkbd-leak-repro-fixed.nro` is the identical app packed
-against a runtime whose `main()` teardown runs `swkbdInlineDisappear` +
-`swkbdInlineUpdate` + `swkbdInlineClose` (`nx_swkbd_teardown()`). Same
-protocol — the keyboard must survive every relaunch.
+**A/B proof (device-verified)**: `swkbd-leak-repro-fixed.nro` is the
+identical app packed against a runtime whose `main()` teardown runs
+`swkbdInlineDisappear` + `swkbdInlineUpdate` + `swkbdInlineClose`
+(`nx_swkbd_teardown()`). Same protocol, same console, same session: the
+stock build zombies on every relaunch; the fixed build types on every
+relaunch, with `[swkbd] inline applet closed at teardown` logged at each
+exit. One runtime hook is the entire difference.
 
 (Aside on `+`: while the keyboard is open, one `+` press is consumed by
 the applet as OK/Send AND dispatches the runtime's `beforeunload` — whose
